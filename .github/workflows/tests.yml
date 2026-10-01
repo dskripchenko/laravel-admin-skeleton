@@ -23,7 +23,7 @@ jobs:
           extensions: mbstring, pdo_sqlite, zip, gd
           coverage: none
       - name: Install
-        run: composer install --prefer-dist --no-interaction --no-progress
+        run: composer update --prefer-dist --no-interaction --no-progress
       - name: Prepare
         run: |
           cp .env.example .env
