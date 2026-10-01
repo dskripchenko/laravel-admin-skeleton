@@ -1,0 +1,41 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    name: PHP ${{ matrix.php }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_sqlite, zip, gd
+          coverage: none
+      - name: Install
+        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Prepare
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --force --seed
+          php artisan admin:publish
+      - name: Test
+        run: php artisan test
+      - name: The admin shell loads the prebuilt frontend
+        run: |
+          php artisan serve --port=8000 > /tmp/serve.log 2>&1 &
+          sleep 3
+          curl -sf http://127.0.0.1:8000/admin/login | grep -q '/vendor/admin/assets/'
+          curl -sf -o /dev/null http://127.0.0.1:8000$(curl -sf http://127.0.0.1:8000/admin/login | grep -o '/vendor/admin/assets/[^"]*\.js' | head -1)
