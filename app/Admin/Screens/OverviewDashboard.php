@@ -48,7 +48,7 @@ final class OverviewDashboard extends DashboardScreen
 
             MarkdownWidget::make()->title('Next steps')->size(12)->content(<<<'MD'
                 - Your admin code lives in `app/Admin` and is registered in `app/Providers/AdminServiceProvider.php`.
-                - Create a resource: `php artisan admin:make-resource OrderResource`.
+                - Create a resource: `php artisan admin:make-resource` (an interactive wizard).
                 - Users, roles and the audit log come from `dskripchenko/laravel-admin-starter`.
                 - Docs: https://github.com/dskripchenko/laravel-admin
                 MD),

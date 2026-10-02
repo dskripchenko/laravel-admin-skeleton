@@ -39,7 +39,7 @@ php artisan serve
 | `config/admin.php` | Путь админки, авторизация, брендинг, языки |
 | `database/seeders/AdminSeeder.php` | Первый администратор из `.env` |
 
-Новый ресурс: `php artisan admin:make-resource OrderResource`, затем
+Новый ресурс: `php artisan admin:make-resource` (интерактивный мастер), затем
 зарегистрируйте его в `AdminServiceProvider` и добавьте пункт меню. Убрать
 пример: удалите `PostResource`, модель `Post`, её миграцию и фабрику и пункт меню.
 

@@ -39,7 +39,7 @@ From a clone instead of `create-project`: `composer setup`.
 | `config/admin.php` | Admin path, auth, branding, locales |
 | `database/seeders/AdminSeeder.php` | The first administrator, from `.env` |
 
-Add a resource: `php artisan admin:make-resource OrderResource`, then register
+Add a resource with `php artisan admin:make-resource` (an interactive wizard), then register
 it in `AdminServiceProvider` and add a menu entry. Remove the example: delete
 `PostResource`, the `Post` model, its migration and factory, and its menu entry.
 
