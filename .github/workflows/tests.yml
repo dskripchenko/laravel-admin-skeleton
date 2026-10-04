@@ -14,7 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         php: ['8.3', '8.4', '8.5']
-    name: PHP ${{ matrix.php }}
+        dependencies: [highest]
+        include:
+          # The floor of the constraints: laravel-admin 1.47, starter 1.4.3.
+          - php: '8.3'
+            dependencies: lowest
+    name: PHP ${{ matrix.php }} (${{ matrix.dependencies }})
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -23,7 +28,9 @@ jobs:
           extensions: mbstring, pdo_sqlite, zip, gd
           coverage: none
       - name: Install
-        run: composer update --prefer-dist --no-interaction --no-progress
+        run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
+      - name: Installed admin packages
+        run: composer show 'dskripchenko/*'
       - name: Prepare
         run: |
           cp .env.example .env
@@ -31,11 +38,34 @@ jobs:
           touch database/database.sqlite
           php artisan migrate --force --seed
           php artisan admin:publish
+      - name: Code style
+        if: matrix.dependencies == 'highest'
+        run: vendor/bin/pint --test
       - name: Test
         run: php artisan test
-      - name: The admin shell loads the prebuilt frontend
+
+  create-project:
+    # What a user gets: `composer create-project` of this commit, including
+    # post-create-project-cmd, then the running app over HTTP.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    name: create-project smoke (PHP ${{ matrix.php }})
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_sqlite, zip, gd
+          coverage: none
+      - name: composer create-project
         run: |
-          php artisan serve --port=8000 > /tmp/serve.log 2>&1 &
-          sleep 3
-          curl -sf http://127.0.0.1:8000/admin/login | grep -q '/vendor/admin/assets/'
-          curl -sf -o /dev/null http://127.0.0.1:8000$(curl -sf http://127.0.0.1:8000/admin/login | grep -o '/vendor/admin/assets/[^"]*\.js' | head -1)
+          repo='{"type":"path","url":"'"$GITHUB_WORKSPACE"'/src","options":{"symlink":false,"versions":{"dskripchenko/laravel-admin-skeleton":"99.0.0"}}}'
+          composer create-project dskripchenko/laravel-admin-skeleton app 99.0.0 \
+            --repository="$repo" --no-interaction --no-progress
+      - name: Smoke test
+        run: src/.github/scripts/smoke.sh app

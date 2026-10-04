@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Admin\AdminPlugin;
 use Dskripchenko\LaravelAdmin\Http\Middleware\AdminAuth;
 use Dskripchenko\LaravelAdmin\Http\Middleware\AdminCspNonce;
 use Dskripchenko\LaravelAdmin\Http\Middleware\AdminLocale;
@@ -20,7 +21,10 @@ return [
     'path' => env('ADMIN_PATH', 'admin'),
     'domain' => env('ADMIN_DOMAIN'),
     // The API lives SEPARATELY from the SPA, at /api/admin/*; it does not nest under path.
-    'api_path' => env('ADMIN_API_PATH', 'api/admin'),
+    // laravel-api serves it at /{laravel-api.prefix}/admin/*, and that is the
+    // default here too (null). Set it only when a proxy rewrites the path
+    // the browser sees; to move the API itself, change laravel-api.prefix.
+    'api_path' => env('ADMIN_API_PATH'),
 
     'api' => [
         // The admin API's global per-user rate limit: 'requests,minutes'.
@@ -48,7 +52,14 @@ return [
         'login_throttle' => env('ADMIN_LOGIN_THROTTLE', '5,1'),
 
         'two_factor' => [
+            // false hides two-factor setup in the profile and refuses to
+            // enable it. Users who enrolled earlier still pass the challenge
+            // at login and may still switch it off.
             'enabled' => true,
+            // The role slugs whose holders must enable 2FA before they can use
+            // the panel; '*' means everyone. Until they do, every request
+            // other than the profile, the session and the shell answers 403
+            // `two_factor_setup_required`, and the SPA opens the profile.
             'enforce_for' => [],
             'recovery_codes' => 8,
             'window' => 1,
@@ -65,17 +76,6 @@ return [
             'rate_limit' => '60,1',
             'default_expiry' => null,
         ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | The session
-    |--------------------------------------------------------------------------
-    */
-
-    'session' => [
-        'cookie' => env('ADMIN_SESSION_COOKIE'),
-        'driver' => null,
     ],
 
     /*
@@ -101,10 +101,13 @@ return [
             // EncryptCookies and CSRF. Headless bearer tokens through Sanctum
             // are optional and come later.
             'web',
+            // The locale comes first, so that every refusal below — the
+            // session, the account, 2FA, demo mode — speaks the panel's
+            // language rather than the application's default.
+            AdminLocale::class,
             CaptureApiRequest::class,
             AdminAuth::class,
             RunActionMiddleware::class,
-            AdminLocale::class,
         ],
         'public' => [
             'web',
@@ -162,6 +165,51 @@ return [
         'countdown_to' => null,
         // The caption next to the countdown: "until the reset", "until it ends" and the like.
         'countdown_label' => env('ADMIN_NOTICE_COUNTDOWN_LABEL'),
+    ],
+
+    /*
+    | Demo mode: for a public demonstration stand. Off by default.
+    |
+    | `accounts` puts "Sign in as …" buttons on the login page; a click logs in
+    | through the ordinary login endpoint. Their passwords are sent to every
+    | visitor of the login page, so list demo accounts only — never a real one.
+    |
+    | `readonly` refuses the operations that would let one visitor lock out or
+    | spoil the stand for the next: a 403 with errorKey `demo_readonly`, which
+    | the SPA shows as a toast. What is refused:
+    |   - `blocked`: API actions as `controller.action` patterns (`*` matches
+    |     anything), e.g. 'profile.changePassword', 'settings_*.update';
+    |   - `protected_models`: writes to the resources of these models — null
+    |     means the panel's user model and Role; `protected_actions` lists
+    |     which resource actions count as writes;
+    |   - uploaded files over `max_upload_kb` (0 switches the limit off).
+    |
+    | An announcement such as "the data resets every hour" goes into `notice`.
+    */
+    'demo' => [
+        'enabled' => (bool) env('ADMIN_DEMO', false),
+        // [['label' => 'Administrator', 'email' => 'admin@demo.test', 'password' => 'demo', 'description' => 'Full access']]
+        'accounts' => [],
+        'readonly' => (bool) env('ADMIN_DEMO_READONLY', true),
+        'blocked' => [
+            'profile.update',
+            'profile.changePassword',
+            'profile.twoFactorEnable',
+            'profile.twoFactorConfirm',
+            'profile.twoFactorDisable',
+            'profile.twoFactorRegenerateCodes',
+            'profile.tokenCreate',
+            'profile.tokenRevoke',
+            'auth.startImpersonation',
+            'import.*',
+            'settings_*.update',
+        ],
+        'protected_models' => null,
+        'protected_actions' => [
+            'create', 'update', 'inlineUpdate', 'replicate', 'reorder',
+            'delete', 'restore', 'forceDelete', 'action',
+        ],
+        'max_upload_kb' => 2048,
     ],
 
     'ui' => [
@@ -385,6 +433,9 @@ return [
     'panels' => [],
 
     'plugins' => [
+        // The application's own resources, screens and menu; the make-*
+        // wizards add to it. The starter pack registers itself.
+        AdminPlugin::class,
         // \Dskripchenko\LaravelAdminStarter\AdminStarterPlugin::class,
         // \Dskripchenko\LaravelAdminMedia\AdminMediaPlugin::class,
     ],

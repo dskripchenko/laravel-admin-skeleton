@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PostStatus;
 use App\Models\Post;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -52,6 +53,22 @@ class AdminPanelTest extends TestCase
         $response = $this->postJson('/api/admin/posts/search', ['q' => $post->title])->assertOk();
 
         $this->assertContains($post->id, array_column($response->json('payload.data'), 'id'));
+    }
+
+    public function test_the_example_resource_filters_posts_by_status(): void
+    {
+        $this->login();
+
+        $response = $this->postJson('/api/admin/posts/search', [
+            'filters' => ['status' => PostStatus::Draft->value],
+            'per_page' => 100,
+        ])->assertOk();
+
+        $this->assertSame(
+            Post::where('status', PostStatus::Draft)->count(),
+            count($response->json('payload.data')),
+        );
+        $this->assertSame([PostStatus::Draft->value], array_values(array_unique(array_column($response->json('payload.data'), 'status'))));
     }
 
     public function test_the_overview_dashboard_loads(): void

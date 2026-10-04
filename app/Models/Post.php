@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PostStatus;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,9 @@ class Post extends Model
 
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return [
+            'status' => PostStatus::class,
+            'published_at' => 'datetime',
+        ];
     }
 }

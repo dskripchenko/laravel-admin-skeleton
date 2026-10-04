@@ -14,8 +14,8 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "dskripchenko/laravel-admin": "^1.36",
-        "dskripchenko/laravel-admin-starter": "^1.4",
+        "dskripchenko/laravel-admin": "^1.47",
+        "dskripchenko/laravel-admin-starter": "^1.4.3",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0"
     },
